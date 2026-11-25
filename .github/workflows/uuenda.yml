@@ -1,0 +1,61 @@
+name: Uuenda ja avalda
+
+on:
+  schedule:
+    - cron: "0 6 * * *"     # iga päev 06:00 UTC = 08:00 Eesti talveajal, 09:00 suveajal
+  workflow_dispatch:         # käsitsi: Actions → "Uuenda ja avalda" → Run workflow
+  push:
+    branches: [main]
+    paths: ["site/**", "src/**", ".github/workflows/**"]
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+concurrency:
+  group: finantsabi
+  cancel-in-progress: false
+
+jobs:
+  uuenda:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    env:
+      TZ: Europe/Tallinn
+      FIN_HOME: work
+      FIN_PASSWORD: ${{ secrets.FIN_PASSWORD }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Uuenda hinnad ja uudised
+        if: github.event_name != 'push'
+        run: |
+          test -n "$FIN_PASSWORD" || { echo "::error::Saladus FIN_PASSWORD puudub"; exit 1; }
+          mkdir -p work
+          sh tools/crypt.sh dec data/portfolio.enc work/portfolio.json
+          cp work/portfolio.json work/portfolio.orig.json
+          if [ -f site/data.enc ]; then sh tools/crypt.sh dec site/data.enc work/data.json || echo "eelmine data.enc ei avanenud, alustan puhtalt"; fi
+          python src/update.py
+          sh tools/crypt.sh enc work/data.json site/data.enc
+          if ! cmp -s work/portfolio.json work/portfolio.orig.json; then
+            sh tools/crypt.sh enc work/portfolio.json data/portfolio.enc
+          fi
+          git config user.name "finantsabi-bot"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add site/data.enc data/portfolio.enc
+          git commit -q -m "Andmed $(date '+%Y-%m-%d %H:%M')" && git push -q || echo "muudatusi pole"
+
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+      - id: deploy
+        uses: actions/deploy-pages@v4

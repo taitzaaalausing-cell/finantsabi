@@ -1,0 +1,4 @@
+# Krüpteerimata andmed ei lähe kunagi GitHubi
+work/
+*.json.tmp
+.DS_Store
