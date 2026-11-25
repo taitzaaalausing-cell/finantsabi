@@ -503,6 +503,7 @@ def run(notify):
         "series": series,
         "snapshots": sorted(snaps.items()),
         "markets": markets,
+        "plan": port.get("plan"),
         "news": {"holdings": news_by_id, "market": market_news},
         "errors": ERRORS,
         "seconds": round(time.time() - started, 1),
