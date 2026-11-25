@@ -43,7 +43,8 @@ MARKETS = [
 
 MARKET_NEWS = [
     {"id": "world", "title": "Maailma turud", "url": "https://news.google.com/rss/search?q=stock+market+today+when:2d&hl=en-US&gl=US&ceid=US:en", "n": 10},
-    {"id": "ee", "title": "Eesti majandus", "url": "https://www.err.ee/rss/majandus", "n": 10},
+    {"id": "ee", "title": "Eesti majandus", "url": "https://www.err.ee/rss/majandus", "n": 10,
+     "fallback": "https://news.google.com/rss/search?q=site:err.ee+majandus+when:3d&hl=et&gl=EE&ceid=EE:et"},
     {"id": "eeb", "title": "Börs eesti keeles", "url": "https://news.google.com/rss/search?q=b%C3%B6rs+OR+aktsiad+OR+aktsiaturg+when:3d&hl=et&gl=EE&ceid=EE:et", "n": 8},
 ]
 
@@ -462,7 +463,12 @@ def run(notify):
     market_news = []
     for f in MARKET_NEWS:
         try:
-            items = parse_rss(get(f["url"], accept="application/rss+xml, application/xml"), limit=f["n"], max_age_days=4)
+            try:
+                items = parse_rss(get(f["url"], accept="application/rss+xml, application/xml"), limit=f["n"], max_age_days=4)
+            except Exception:  # noqa: BLE001
+                if not f.get("fallback"):
+                    raise
+                items = parse_rss(get(f["fallback"], accept="application/rss+xml, application/xml"), limit=f["n"], max_age_days=4)
         except Exception as e:  # noqa: BLE001
             ERRORS.append(f"Uudised {f['title']}: {e}")
             items = next((x["items"] for x in prev_data.get("news", {}).get("market", []) if x["id"] == f["id"]), [])
