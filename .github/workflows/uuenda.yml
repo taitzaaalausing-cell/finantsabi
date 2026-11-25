@@ -60,3 +60,10 @@ jobs:
           path: site
       - id: deploy
         uses: actions/deploy-pages@v5
+        continue-on-error: true
+      # GitHub registreerib artefakti vahel viivitusega – teine katse 30 s pärast
+      - if: steps.deploy.outcome == 'failure'
+        run: sleep 30
+      - id: deploy2
+        if: steps.deploy.outcome == 'failure'
+        uses: actions/deploy-pages@v5
